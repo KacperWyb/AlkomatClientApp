@@ -11,6 +11,7 @@ import {
 } from "recharts";
 
 interface Drink {
+  label: string;
   volumeMl: number;
   percent: number;
   count: number;
@@ -43,11 +44,11 @@ interface OutputData {
 }
 
 const PRESETS = [
-  { id: "large_beer", label: "Duże piwo (500 ml)", volumeMl: 500, percent: 5 },
-  { id: "small_beer", label: "Małe piwo (350 ml)", volumeMl: 350, percent: 5 },
-  { id: "wine", label: "Wino – kieliszek (175 ml)", volumeMl: 175, percent: 12 },
-  { id: "champagne", label: "Szampan – kieliszek (120 ml)", volumeMl: 120, percent: 12 },
-  { id: "spirit", label: "Mocny alkohol – kieliszek (50 ml)", volumeMl: 50, percent: 40 },
+  { label: "Duże piwo (500 ml)", volumeMl: 500, percent: 5 },
+  { label: "Małe piwo (350 ml)", volumeMl: 350, percent: 5 },
+  { label: "Wino – kieliszek (175 ml)", volumeMl: 175, percent: 12 },
+  { label: "Szampan – kieliszek (120 ml)", volumeMl: 120, percent: 12 },
+  { label: "Mocny alkohol – kieliszek (50 ml)", volumeMl: 50, percent: 40 },
 ] as const;
 
 export const ChartWithInput = () => {
@@ -56,9 +57,9 @@ export const ChartWithInput = () => {
     sex: "male",
     age: 30,
     heightCm: 175,
-    drinks: [],
-    startTime: new Date().toISOString(),
-    endTime: new Date().toISOString(),
+    drinks: PRESETS.map(d => ({ ...d, count: 0 })),
+    startTime: new Date().toISOString().slice(0, 16),
+    endTime: new Date().toISOString().slice(0, 16),
   });
   const [output, setOutput] = useState<OutputData | null>(null);
 
@@ -66,19 +67,10 @@ export const ChartWithInput = () => {
     setInput({ ...input, [field]: value });
   };
 
-  const handleDrinkChange = (index: number, count: number) => {
+  const handleDrinkChange = (index: number, delta: number) => {
     const newDrinks = [...input.drinks];
-    newDrinks[index] = { ...newDrinks[index], count };
+    newDrinks[index].count = Math.max(0, newDrinks[index].count + delta);
     setInput({ ...input, drinks: newDrinks });
-  };
-
-  const addDrink = (presetId: typeof PRESETS[number]["id"]) => {
-    const preset = PRESETS.find(p => p.id === presetId);
-    if (!preset) return;
-    setInput({
-      ...input,
-      drinks: [...input.drinks, { volumeMl: preset.volumeMl, percent: preset.percent, count: 1 }],
-    });
   };
 
   const submit = async () => {
@@ -96,75 +88,88 @@ export const ChartWithInput = () => {
   };
 
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ padding: 20, maxWidth: 600 }}>
       <h2>🍺 Symulator alkoholu</h2>
-      <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-        <div>
-          <label>Waga (kg): </label>
-          <input
-            type="number"
-            value={input.weightKg}
-            onChange={(e) => handleChange("weightKg", Number(e.target.value))}
-          />
-        </div>
-        <div>
-          <label>Wzrost (cm): </label>
-          <input
-            type="number"
-            value={input.heightCm}
-            onChange={(e) => handleChange("heightCm", Number(e.target.value))}
-          />
-        </div>
-        <div>
-          <label>Wiek: </label>
-          <input
-            type="number"
-            value={input.age}
-            onChange={(e) => handleChange("age", Number(e.target.value))}
-          />
-        </div>
-        <div>
-          <label>Płeć: </label>
-          <select value={input.sex} onChange={(e) => handleChange("sex", e.target.value)}>
-            <option value="male">Mężczyzna</option>
-            <option value="female">Kobieta</option>
-          </select>
-        </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <label>Waga (kg): </label>
+        <input
+          type="number"
+          value={input.weightKg}
+          onChange={(e) => handleChange("weightKg", Number(e.target.value))}
+        />
+      </div>
+      <div style={{ marginBottom: 20 }}>
+        <label>Wzrost (cm): </label>
+        <input
+          type="number"
+          value={input.heightCm}
+          onChange={(e) => handleChange("heightCm", Number(e.target.value))}
+        />
+      </div>
+      <div style={{ marginBottom: 20 }}>
+        <label>Wiek: </label>
+        <input
+          type="number"
+          value={input.age}
+          onChange={(e) => handleChange("age", Number(e.target.value))}
+        />
+      </div>
+      <div style={{ marginBottom: 20 }}>
+        <label>Płeć: </label>
+        <select
+          value={input.sex}
+          onChange={(e) => handleChange("sex", e.target.value)}
+        >
+          <option value="male">Mężczyzna</option>
+          <option value="female">Kobieta</option>
+        </select>
       </div>
 
-      <h3>Napoje</h3>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        {PRESETS.map((p) => (
-          <button key={p.id} onClick={() => addDrink(p.id)}>
-            {p.label}
-          </button>
-        ))}
-      </div>
-
+      <h3>Co zostało spożyte</h3>
       {input.drinks.map((d, i) => (
-        <div key={i} style={{ display: "flex", gap: 10, marginTop: 10 }}>
-          <span>
-            {d.volumeMl}ml {d.percent}%
-          </span>
-          <input
-            type="number"
-            min={1}
-            value={d.count}
-            onChange={(e) => handleDrinkChange(i, Number(e.target.value))}
-          />
-          <span>szt.</span>
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <span>{d.label}</span>
+          <span>{d.percent}% alkoholu</span>
+          <button onClick={() => handleDrinkChange(i, -1)}>−</button>
+          <span>{d.count}</span>
+          <button onClick={() => handleDrinkChange(i, 1)}>+</button>
         </div>
       ))}
 
-      <div style={{ marginTop: 20 }}>
-        <button onClick={submit}>Oblicz promile 🍷</button>
+      <div style={{ marginBottom: 20 }}>
+        <button onClick={() => alert("Tutaj można dodać własny napój")}>
+          Nie ma na liście tego co spożywałeś? ➕ Dodaj
+        </button>
       </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <label>Start: </label>
+        <input
+          type="datetime-local"
+          value={input.startTime}
+          onChange={(e) => handleChange("startTime", e.target.value)}
+        />
+      </div>
+      <div style={{ marginBottom: 20 }}>
+        <label>Koniec: </label>
+        <input
+          type="datetime-local"
+          value={input.endTime}
+          onChange={(e) => handleChange("endTime", e.target.value)}
+        />
+      </div>
+
+      <button onClick={submit} style={{ marginBottom: 20 }}>
+        Oblicz promile 🍷
+      </button>
 
       {output && (
         <>
           <h3>Podsumowanie: {output.summary}</h3>
           <p>Status: {output.status}</p>
           <p>Maksymalny promil: {output.promiles.toFixed(2)}</p>
+
           <div style={{ width: "100%", height: 400, marginTop: 20 }}>
             <ResponsiveContainer>
               <LineChart data={output.timeline}>

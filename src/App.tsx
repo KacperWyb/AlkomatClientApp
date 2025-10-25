@@ -5,8 +5,6 @@ function App() {
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>📊 Wykres z gradientem skali</h2>
-      {/* <ChartWithGradient /> */}
       <ChartWithInput />
     </div>
   );
