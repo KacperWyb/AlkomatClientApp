@@ -14,12 +14,12 @@ import {
 interface Drink { volumeMl: number; percent: number; count: number; }
 interface InputData {
   weightKg: number;
-  sex: "male" | "female";
+  sex: string;
   age: number;
   heightCm: number;
   drinks: Drink[];
-  startTime: string; // datetime-local lub ISO
-  endTime: string;   // datetime-local lub ISO
+  startTime: string;
+  endTime: string;
 }
 interface TimelinePoint { timeString: string; promiles: number; }
 interface OutputData { promiles: number; status: string; summary: string; timeline: TimelinePoint[]; }
@@ -35,31 +35,19 @@ const PRESETS = [
 
 type PresetId = typeof PRESETS[number]["id"];
 
-// Pomocnicze — parsowanie czasu i formatowanie
-const toDate = (v: string) => {
-  if (!v) return new Date();
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)) return new Date(v); // datetime-local
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? new Date() : d;
-};
-
-const fmtTime = (d: Date) =>
-  d.toLocaleString([], { hour12: false, hour: "2-digit", minute: "2-digit" });
-
 export const ChartWithInput = () => {
-  // --- Stan danych wejściowych ---
-  const nowIso = new Date().toISOString();
+  // --- Stan danych wejściowych (bez ręcznej edycji napojów) ---
   const [input, setInput] = useState<InputData>({
     weightKg: 70,
     sex: "male",
     age: 30,
     heightCm: 175,
     drinks: [],
-    startTime: nowIso,
-    endTime: nowIso,
+    startTime: new Date().toISOString(),
+    endTime: new Date().toISOString(),
   });
 
-  // Liczniki dla presetów: start wg wymagań
+  // Liczniki dla presetów: start wg Twoich wymagań
   const [presetCounts, setPresetCounts] = useState<Record<PresetId, number>>({
     large_beer: 1,
     small_beer: 1,
@@ -72,6 +60,8 @@ export const ChartWithInput = () => {
   const [customDrinks, setCustomDrinks] = useState<Drink[]>([]);
 
   const [output, setOutput] = useState<OutputData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Zmiana pól prostych
   const handleChange = (field: keyof InputData, value: any) => setInput(prev => ({ ...prev, [field]: value }));
@@ -88,7 +78,7 @@ export const ChartWithInput = () => {
   };
   const removeCustomDrink = (index: number) => setCustomDrinks(prev => prev.filter((_, i) => i !== index));
 
-  // Z presetów + customów budujemy tablicę wejściową
+  // Z presetów + customów budujemy tablicę do API
   useEffect(() => {
     const fromPresets: Drink[] = PRESETS.flatMap(p => {
       const count = presetCounts[p.id] ?? 0;
@@ -102,11 +92,35 @@ export const ChartWithInput = () => {
     });
   }, [presetCounts, customDrinks]);
 
-  // --- LOKALNE OBLICZENIA (bez backendu) ---
+  // Wywołanie obliczeń po KAŻDEJ zmianie (debounce)
   useEffect(() => {
-    const res = calculateBAC(input);
-    setOutput(res);
+    const controller = new AbortController();
+    const t = setTimeout(() => { submit(controller.signal); }, 450);
+    return () => { controller.abort(); clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input]);
+
+  const submit = async (signal?: AbortSignal) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("http://localhost:5293/Alkomat/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+        signal,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: OutputData = await res.json();
+      setOutput(data);
+    } catch (e: any) {
+      if (e?.name === "AbortError") return; // przerwane przy kolejnej zmianie
+      console.error(e);
+      setError(e?.message ?? "Coś poszło nie tak");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Kolory tła: zielone do 0.2‰, czerwone powyżej 0.2‰
   const currPromiles = output?.timeline?.length
@@ -150,7 +164,7 @@ export const ChartWithInput = () => {
           </label>
           <label>
             <span>Płeć: </span>
-            <select value={input.sex} onChange={e => handleChange("sex", e.target.value as any)} style={{ width: "100%" }}>
+            <select value={input.sex} onChange={e => handleChange("sex", e.target.value)} style={{ width: "100%" }}>
               <option value="male">Mężczyzna</option>
               <option value="female">Kobieta</option>
             </select>
@@ -225,6 +239,11 @@ export const ChartWithInput = () => {
           </div>
 
           {/* Bez przycisku „Oblicz” – liczy się automatycznie */}
+          <div style={{ marginTop: 8, minHeight: 20 }}>
+            {loading && <span>Obliczam…</span>}
+            {error && <span style={{ color: "#b91c1c" }}>Błąd: {error}</span>}
+          </div>
+
           {output && (
             <div style={{ marginTop: 8, fontSize: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -281,60 +300,4 @@ export const ChartWithInput = () => {
       </div>
     </div>
   );
-}
-
-// ================= HELPERS: lokalna symulacja BAC =================
-const ETHANOL_DENSITY = 0.789; // g/ml
-const ELIMINATION_PER_HOUR_PCT = 0.015; // 0.015% BAC na godzinę (~0.15‰/h)
-
-function gramsFromDrink(d: Drink) {
-  const pureMl = d.volumeMl * (d.percent / 100);
-  return pureMl * ETHANOL_DENSITY * (d.count || 1);
-}
-
-function calculateBAC(input: InputData): OutputData {
-  const weight = Math.max(30, input.weightKg || 0);
-  const r = input.sex === "female" ? 0.55 : 0.68; // współczynnik dystrybucji
-
-  const start = toDate(input.startTime);
-  const end = toDate(input.endTime);
-  const durationMs = Math.max(0, end.getTime() - start.getTime());
-
-  const totalGrams = (input.drinks || []).reduce((s, d) => s + gramsFromDrink(d), 0);
-
-  // Generujemy oś czasu co 10 minut aż do wyzerowania BAC
-  const stepMs = 10 * 60 * 1000;
-  const timeline: TimelinePoint[] = [];
-
-  // Minimum: pokaż przynajmniej 6 godzin
-  const minHours = 6;
-  const maxHours = 24; // górny limit bezpieczeństwa
-  const maxSimMs = Math.max(minHours * 3600000, Math.min(maxHours * 3600000, durationMs + 16 * 3600000));
-
-  for (let t = 0; t <= maxSimMs; t += stepMs) {
-    const curr = new Date(start.getTime() + t);
-
-    // Absorpcja: liniowo od start do end
-    let absorbed = totalGrams;
-    if (durationMs > 0) {
-      const rate = Math.min(1, t / durationMs);
-      absorbed = totalGrams * rate;
-    }
-
-    // Eliminacja (od startu)
-    const hours = t / 3600000;
-    const bacPct = Math.max(0, (absorbed / (r * weight)) * 100 - ELIMINATION_PER_HOUR_PCT * hours);
-    const promiles = bacPct * 10;
-
-    timeline.push({ timeString: fmtTime(curr), promiles: Number(promiles.toFixed(3)) });
-
-    if (promiles <= 0 && t > 0) break; // wyzerowało – kończymy wcześniej
-  }
-
-  const lastProm = timeline[timeline.length - 1]?.promiles ?? 0;
-  const status = lastProm <= 0.2 ? "strefa zielona (≤ 0.2‰)" : "strefa czerwona (> 0.2‰)";
-
-  const summary = `Zużyto ok. ${totalGrams.toFixed(1)} g czystego alkoholu. Szacowane aktualne stężenie: ${lastProm.toFixed(2)}‰.`;
-
-  return { promiles: lastProm, status, summary, timeline };
 }
