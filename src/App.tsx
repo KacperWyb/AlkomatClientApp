@@ -1,5 +1,5 @@
 import './App.css'
-import { ChartWithInput } from './ChartWithInput';
+import { ChartWithInput } from './components/ChartWithInput';
 
 function App() {
 
