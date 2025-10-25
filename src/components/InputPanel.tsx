@@ -33,12 +33,15 @@ export const InputPanel = ({
   };
 
   const addCustomDrink = () => {
-    const label = prompt("Nazwa napoju") || "Niestandardowy napój";
-    const percent = Number(prompt("Procent alkoholu") || 0);
-    const volumeMl = Number(prompt("Ilość [ml]") || 0);
     setDrinks((prev) => [
       ...prev,
-      { id: Date.now().toString(), label, percent, volumeMl, count: 1 },
+      {
+        id: Date.now().toString(),
+        label: "Niestandardowy napój",
+        percent: 0,
+        volumeMl: 10,
+        count: 1,
+      },
     ]);
   };
 
@@ -123,12 +126,67 @@ export const InputPanel = ({
                 gap: 10,
               }}
             >
-              <div>
+              {/* start */}
+
+              {/* <div>
                 <div style={{ fontWeight: 600 }}>{d.label}</div>
                 <div style={{ fontSize: 12, opacity: 0.7 }}>
                   {d.percent}% | {d.volumeMl} ml
                 </div>
+              </div> */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ fontWeight: 600 }}>
+                  {d.label}
+                </div>
+                {d.label === "Niestandardowy napój" ? (
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input
+                      type="number"
+                      value={d.percent}
+                      onChange={(e) =>
+                        setDrinks((prev) => {
+                          const newDrinks = [...prev];
+                          newDrinks[i] = { ...newDrinks[i], percent: Number(e.target.value) };
+                          return newDrinks;
+                        })
+                      }
+                      style={{
+                        width: 30,
+                        padding: "4px 6px",
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                      }}
+                    />
+                    <span style={{ alignSelf: "center", fontSize: 13 }}>%</span>
+
+                    <input
+                      type="number"
+                      value={d.volumeMl}
+                      onChange={(e) =>
+                        setDrinks((prev) => {
+                          const newDrinks = [...prev];
+                          newDrinks[i] = { ...newDrinks[i], volumeMl: Number(e.target.value) };
+                          return newDrinks;
+                        })
+                      }
+                      style={{
+                        width: 35,
+                        padding: "4px 6px",
+                        borderRadius: 6,
+                        border: "1px solid #d1d5db",
+                      }}
+                    />
+                    <span style={{ alignSelf: "center", fontSize: 13 }}>ml</span>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, opacity: 0.7 }}>
+                    {d.percent}% | {d.volumeMl} ml
+                  </div>
+                )}
               </div>
+
+
+              {/* koniec */}
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
                   onClick={() => handleDrinkChange(i, -1)}
@@ -149,7 +207,7 @@ export const InputPanel = ({
                     handleDrinkChange(i, Number(e.target.value) - d.count)
                   }
                   style={{
-                    width: 48,
+                    width: 35,
                     textAlign: "center",
                     border: "1px solid #d1d5db",
                     borderRadius: 6,
@@ -210,7 +268,7 @@ export const InputPanel = ({
             value={input.startTime}
             onChange={(e) => onInputChange("startTime", e.target.value)}
             style={{
-              width: "100%",
+              width: "90%",
               padding: "6px 8px",
               borderRadius: 8,
               border: "1px solid #d1d5db",
@@ -224,7 +282,7 @@ export const InputPanel = ({
             value={input.endTime}
             onChange={(e) => onInputChange("endTime", e.target.value)}
             style={{
-              width: "100%",
+              width: "90%",
               padding: "6px 8px",
               borderRadius: 8,
               border: "1px solid #d1d5db",
