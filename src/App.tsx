@@ -4,7 +4,7 @@ import { ChartWithInput } from './ChartWithInput';
 function App() {
 
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ paddingLeft: 20, paddingRight: 20 }}>
       <h2>📊 Wykres z gradientem skali</h2>
       {/* <ChartWithGradient /> */}
       <ChartWithInput />
