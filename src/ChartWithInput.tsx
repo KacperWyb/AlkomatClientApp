@@ -8,12 +8,9 @@ export const ChartWithInput = () => {
     weightKg: 70,
     heightCm: 175,
     age: 30,
-    sex: "male",
-    bodyType: "normalna",
-    food: "standardowo",
-    metabolism: "normalnie",
-    startTime: new Date().toISOString().slice(0,16),
-    endTime: new Date().toISOString().slice(0,16),
+    sex: "Mężczyzna",
+    startTime: new Date().toISOString().slice(0, 16),
+    endTime: new Date().toISOString().slice(0, 16),
   });
 
   const [drinks, setDrinks] = useState<Drink[]>(PRESETS.map(d => ({ ...d, count: 0 })));
@@ -26,7 +23,10 @@ export const ChartWithInput = () => {
   const handleDrinkChange = (index: number, delta: number) => {
     setDrinks(prev => {
       const newDrinks = [...prev];
-      newDrinks[index] = { ...newDrinks[index], count: Math.max(0, newDrinks[index].count + delta) };
+      newDrinks[index] = {
+        ...newDrinks[index],
+        count: Math.max(0, newDrinks[index].count + delta),
+      };
       return newDrinks;
     });
   };
@@ -39,7 +39,10 @@ export const ChartWithInput = () => {
     const label = prompt("Nazwa napoju") || "Niestandardowy napój";
     const percent = Number(prompt("Procent alkoholu") || 0);
     const volumeMl = Number(prompt("Ilość [ml]") || 0);
-    setDrinks(prev => [...prev, { id: Date.now().toString(), label, percent, volumeMl, count: 1 }]);
+    setDrinks(prev => [
+      ...prev,
+      { id: Date.now().toString(), label, percent, volumeMl, count: 1 },
+    ]);
   };
 
   const submit = async () => {
@@ -52,93 +55,245 @@ export const ChartWithInput = () => {
       });
       const data: OutputData = await res.json();
       setOutput(data);
-    } catch(e) {
+    } catch (e) {
       console.error(e);
     }
   };
 
+  // kolor tła zależny od statusu
+  const currPromiles = output?.timeline?.length
+    ? output.timeline[output.timeline.length - 1].promiles
+    : 0;
+  const isGreenPhase = currPromiles <= 0.2;
+  const panelBg = isGreenPhase
+    ? "linear-gradient(180deg,#E8F5E9 0%,#FFFFFF 60%)"
+    : "linear-gradient(180deg,#FFEBEE 0%,#FFFFFF 60%)";
+
   return (
-    <div style={{ display:"flex", gap:20, padding:20, flexWrap:"wrap" }}>
-      <div style={{ flex:"1 1 300px", minWidth:300 }}>
-        <h2>🍺 Symulator alkoholu</h2>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "360px 1fr",
+        gap: 16,
+        padding: 20,
+        alignItems: "stretch",
+      }}
+    >
+      {/* Lewy panel */}
+      <div
+        style={{
+          background: panelBg,
+          border: "1px solid #e5e7eb",
+          borderRadius: 12,
+          padding: 16,
+          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        }}
+      >
+        <h2 style={{ marginTop: 0 }}>🍺 Symulator alkoholu</h2>
 
-        <div style={{ display:"flex", flexWrap:"wrap", gap:10 }}>
-          <div>
-            <label>Płeć</label>
-            <select value={input.sex} onChange={e => handleChange("sex", e.target.value)}>
-              <option value="male">Mężczyzna</option>
-              <option value="female">Kobieta</option>
-            </select>
-          </div>
-          <div>
-            <label>Wzrost [cm]</label>
-            <input type="number" value={input.heightCm} onChange={e => handleChange("heightCm", Number(e.target.value))}/>
-          </div>
-          <div>
-            <label>Waga [kg]</label>
-            <input type="number" value={input.weightKg} onChange={e => handleChange("weightKg", Number(e.target.value))}/>
-          </div>
-          <div>
-            <label>Wiek [lata]</label>
-            <input type="number" value={input.age} onChange={e => handleChange("age", Number(e.target.value))}/>
-          </div>
-          <div>
-            <label>Sylwetka</label>
-            <select value={input.bodyType} onChange={e => handleChange("bodyType", e.target.value)}>
-              <option value="drobna">drobna</option>
-              <option value="normalna">normalna</option>
-              <option value="krępa">krępa</option>
-            </select>
-          </div>
-        </div>
+        {/* Dane wejściowe */}
+        <div style={{ display: "grid", gap: 8 }}>
+          {[
+            { label: "Płeć", field: "sex", type: "select", options: ["Mężczyzna", "Kobieta"] },
+            { label: "Waga (kg)", field: "weightKg", type: "number" },
+            { label: "Wzrost (cm)", field: "heightCm", type: "number" },
+            { label: "Wiek (lata)", field: "age", type: "number" },
+          ].map((inputDef, idx) => (
+            <label key={idx}>
+              <small>{inputDef.label}</small>
+              {inputDef.type === "select" ? (
+                <select
+                  value={input[inputDef.field as keyof InputData] as string}
+                  onChange={e => handleChange(inputDef.field as keyof InputData, e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "6px 8px",
+                    borderRadius: 8,
+                    border: "1px solid #d1d5db",
+                    background: "#fff",
+                  }}
+                >
+                  {inputDef.options?.map(opt => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={inputDef.type}
+                  value={input[inputDef.field as keyof InputData] as any}
+                  onChange={e =>
+                    handleChange(inputDef.field as keyof InputData, Number(e.target.value))
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "6px 8px",
+                    borderRadius: 8,
+                    border: "1px solid #d1d5db",
+                    background: "#fff",
+                  }}
+                />
+              )}
+            </label>
+          ))}
 
-        <h3>Co zostało spożyte?</h3>
-        {drinks.map((d,i) => (
-          <div key={i} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:5, border:"1px solid #ccc", padding:5, borderRadius:5 }}>
-            <span style={{ flex:1 }}>{d.label}</span>
-            <button onClick={() => handleDrinkChange(i,-1)}>−</button>
-            <span>{d.count}</span>
-            <button onClick={() => handleDrinkChange(i,1)}>+</button>
-            <button onClick={() => removeDrink(i)}>🗑️</button>
-            <span>{d.percent}% | {d.volumeMl}ml</span>
+          {/* Napoje */}
+          <div style={{ marginTop: 10 }}>
+            <strong>Co zostało spożyte</strong>
+            <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
+              {drinks.map((d, i) => (
+                <div
+                  key={i}
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 10,
+                    padding: 10,
+                    background: "#fff",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{d.label}</div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>
+                      {d.percent}% | {d.volumeMl} ml
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button
+                      onClick={() => handleDrinkChange(i, -1)}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #e5e7eb",
+                        background: "#f8fafc",
+                      }}
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      value={d.count}
+                      min={0}
+                      onChange={e => handleDrinkChange(i, Number(e.target.value) - d.count)}
+                      style={{
+                        width: 48,
+                        textAlign: "center",
+                        border: "1px solid #d1d5db",
+                        borderRadius: 6,
+                      }}
+                    />
+                    <button
+                      onClick={() => handleDrinkChange(i, 1)}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #e5e7eb",
+                        background: "#f8fafc",
+                      }}
+                    >
+                      +
+                    </button>
+                    <button
+                      onClick={() => removeDrink(i)}
+                      style={{
+                        background: "#fef2f2",
+                        color: "#b91c1c",
+                        border: "1px solid #fecaca",
+                        borderRadius: 8,
+                        padding: "6px 10px",
+                      }}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 14 }}>
+              <span>Nie ma na liście tego co spożywałeś?</span>
+              <button
+                onClick={addCustomDrink}
+                style={{
+                  marginLeft: 8,
+                  background: "#ecfeff",
+                  color: "#0e7490",
+                  border: "1px solid #a5f3fc",
+                  borderRadius: 8,
+                  padding: "6px 10px",
+                }}
+              >
+                ➕ Dodaj
+              </button>
+            </div>
           </div>
-        ))}
-        <div style={{ marginBottom:20 }}>
-          <button onClick={addCustomDrink}>Nie ma na liście tego co spożywałeś? ➕ Dodaj</button>
-        </div>
 
-        <div>
-          <label>W trakcie spożywania alkoholu jadłeś</label>
-          <select value={input.food} onChange={e=>handleChange("food", e.target.value)}>
-            <option value="nic">nic</option>
-            <option value="niewiele">niewiele</option>
-            <option value="standardowo">standardowo</option>
-            <option value="dużo">dużo (tłusto)</option>
-          </select>
-        </div>
+          {/* Czas */}
+          <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+            <label>
+              <small>Start</small>
+              <input
+                type="datetime-local"
+                value={input.startTime}
+                onChange={e => handleChange("startTime", e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "6px 8px",
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                }}
+              />
+            </label>
+            <label>
+              <small>Koniec</small>
+              <input
+                type="datetime-local"
+                value={input.endTime}
+                onChange={e => handleChange("endTime", e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "6px 8px",
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                }}
+              />
+            </label>
+          </div>
 
-        <div>
-          <label>Alkohol spalasz</label>
-          <select value={input.metabolism} onChange={e=>handleChange("metabolism", e.target.value)}>
-            <option value="słabo">słabo</option>
-            <option value="normalnie">normalnie</option>
-            <option value="szybko">szybko</option>
-          </select>
+          <button
+            onClick={submit}
+            style={{
+              marginTop: 12,
+              padding: "8px 16px",
+              background: "#15803d",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontWeight: 600,
+              boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+            }}
+          >
+            Oblicz promile 🍷
+          </button>
         </div>
-
-        <div>
-          <label>Rozpoczęcie spożycia</label>
-          <input type="datetime-local" value={input.startTime} onChange={e=>handleChange("startTime", e.target.value)}/>
-        </div>
-        <div>
-          <label>Zakończenie spożycia</label>
-          <input type="datetime-local" value={input.endTime} onChange={e=>handleChange("endTime", e.target.value)}/>
-        </div>
-
-        <button onClick={submit} style={{ marginTop:10, padding:"5px 15px", background:"#2E8B57", color:"#fff", border:"none", borderRadius:5, cursor:"pointer" }}>Oblicz promile 🍷</button>
       </div>
 
-      <div style={{ flex:"1 1 400px", minWidth:400 }}>
+      {/* Prawy panel – wykres */}
+      <div
+        style={{
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: 12,
+          padding: 12,
+          height: 420,
+          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        }}
+      >
+        <h3>Wykres stężenia alkoholu (‰)</h3>
         {output && <AlcoholChart output={output} />}
       </div>
     </div>

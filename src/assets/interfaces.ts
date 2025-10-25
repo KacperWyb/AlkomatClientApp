@@ -11,9 +11,6 @@ export interface InputData {
   heightCm: number;
   age: number;
   sex: string;
-  bodyType: "drobna" | "normalna" | "krępa";
-  food: "nic" | "niewiele" | "standardowo" | "dużo";
-  metabolism: "słabo" | "normalnie" | "szybko";
   startTime: string;
   endTime: string;
 }
