@@ -1,66 +1,7 @@
-import React, { useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-
-interface Drink {
-  id: string;
-  label: string;
-  volumeMl: number;
-  percent: number;
-  count: number;
-}
-
-interface InputData {
-  weightKg: number;
-  heightCm: number;
-  age: number;
-  sex: string;
-  bodyType: "drobna" | "normalna" | "krępa";
-  food: "nic" | "niewiele" | "standardowo" | "dużo";
-  metabolism: "słabo" | "normalnie" | "szybko";
-  startTime: string;
-  endTime: string;
-}
-
-interface TimelinePoint {
-  time: number;
-  promiles: number;
-}
-
-interface OutputData {
-  promiles: number;
-  summary: string;
-  timeline: TimelinePoint[];
-}
-
-const PRESETS = [
-  { id: "large_beer", label: "Duże piwo 500ml", volumeMl: 500, percent: 5 },
-  { id: "small_beer", label: "Małe piwo 350ml", volumeMl: 350, percent: 5 },
-  { id: "wine", label: "Wino kieliszek 175ml", volumeMl: 175, percent: 12 },
-  { id: "champagne", label: "Szampan kieliszek 120ml", volumeMl: 120, percent: 12 },
-  { id: "spirit", label: "Mocny alkohol kieliszek 50ml", volumeMl: 50, percent: 40 },
-] as const;
-
-const AlcoholChart = React.memo(({ output }: { output: OutputData }) => (
-  <div style={{ width: "100%", height: 400 }}>
-    <ResponsiveContainer>
-      <LineChart data={output.timeline}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="time" label={{ value: "Minuty", position: "insideBottomRight" }} />
-        <YAxis domain={[0, Math.max(...output.timeline.map(p => p.promiles)) * 1.2]} />
-        <Tooltip />
-        <Line type="monotone" dataKey="promiles" stroke="#2E8B57" strokeWidth={3} dot={false} />
-      </LineChart>
-    </ResponsiveContainer>
-  </div>
-));
+import { useState } from "react";
+import { AlcoholChart } from "./components/AlcoholChart";
+import type { InputData, Drink, OutputData } from "./assets/interfaces";
+import { PRESETS } from "./assets/presets";
 
 export const ChartWithInput = () => {
   const [input, setInput] = useState<InputData>({
